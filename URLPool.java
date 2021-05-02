@@ -1,5 +1,7 @@
-import java.util.*;
-
+import java.util.LinkedList;
+//хранить список
+//всех URL-адресов для поиска, а также относительный "уровень" каждого из
+//этих URL-адресов
 public class URLPool {
 
     private LinkedList<URLDepthPair> watchedList;
@@ -20,30 +22,31 @@ public class URLPool {
         blockedList = new LinkedList<URLDepthPair>();
         this.depth = depth;
     }
-
-    public synchronized int getWaitThreads() {
+    //  синхронизируем
+    public synchronized int getWaitThread() {
         return waitingThreads;
     }
 
     public synchronized boolean put(URLDepthPair depthPair) {
 
-        boolean added = false;
+        boolean ad = false;
 
         if (depthPair.getDepth() < this.depth) {
             notWatchedList.addLast(depthPair);
-            added = true;
+            ad = true;
 
             if (waitingThreads > 0) waitingThreads--;
+//продолжает работу потока, у которого ранее был вызван метод wait()
             this.notify();
-        }
-
-        else {
+        } else {
             blockedList.add(depthPair);
         }
 
-        return added;
+        return ad;
     }
-
+    //Если глубина URL-адреса меньше максимальной, добавьте
+//пару в очередь ожидания. Иначе добавьте URL-адрес в список обработанных,
+//не сканируя страницу.
     public synchronized URLDepthPair get() {
 
         URLDepthPair myDepthPair = null;
@@ -51,9 +54,9 @@ public class URLPool {
         if (notWatchedList.size() == 0) {
             waitingThreads++;
             try {
+                //   освобождает монитор и переводит вызывающий поток в состояние ожидания до тех пор, пока другой поток не вызовет метод notify()
                 this.wait();
-            }
-            catch (InterruptedException e) {
+            } catch (InterruptedException e) {
                 System.err.println("MalformedURLException: " + e.getMessage());
                 return null;
             }
@@ -68,10 +71,6 @@ public class URLPool {
 
     public LinkedList<URLDepthPair> getWatchedList() {
         return this.watchedList;
-    }
-
-    public LinkedList<URLDepthPair> getNotWatchedList() {
-        return this.notWatchedList;
     }
 
     public LinkedList<URLDepthPair> getBlockedList() {

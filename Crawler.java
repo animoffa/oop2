@@ -1,23 +1,22 @@
-import java.lang.Exception;
-import java.util.*;
+import javax.net.SocketFactory;
+import javax.net.ssl.SSLSocketFactory;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.MalformedURLException;
-import java.net.*;
-import java.io.*;
-
+import java.net.Socket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
+import java.util.LinkedList;
+//https://mtuci.ru/ 2
 public class Crawler {
 
-    public static final int HTTP_PORT = 80;
+    public static final int HTTPS_PORT = 443;
     public static final String HOOK_REF = "<a href=\"";
     public static final String BAD_REQUEST_LINE = "HTTP/1.1 400 Bad Request";
     public static final int NUM_OF_DEFAULT_THREADS = 4;
-
-
-    public static final String testURL = "http://users.cms.caltech.edu/~donnie/cs11/java/";
-    public static final int testDepth = 1;
-
-
     public int depth;
-
     public int numOfThreads;
 
     public Crawler() {
@@ -25,48 +24,31 @@ public class Crawler {
     }
 
 
-    public static void main (String[] args) {
-
+    public static void main(String[] args) {
         Crawler crawler = new Crawler();
 
         crawler.numOfThreads = Crawler.NUM_OF_DEFAULT_THREADS;
 
-        URLDepthPair firstRezAndSetDepth = crawler.getFirstURLDepthPair(args);
+        URLDepthPair res = crawler.getFirstURLDepthPair(args);
         crawler.numOfThreads = CrawlerHelper.getNumOfThreads(args);
 
         URLPool pool = new URLPool(crawler.depth);
-        pool.put(firstRezAndSetDepth);
-
-        int totalThreads = 0;
+        pool.put(res);
+        //возвращаем количество активных потоков
         int initialActive = Thread.activeCount();
 
-        while (pool.getWaitThreads() != crawler.numOfThreads) {
-
-
+        while (pool.getWaitThread() != crawler.numOfThreads) {
             if (Thread.activeCount() - initialActive < crawler.numOfThreads) {
                 CrawlerTask crawlerTask = new CrawlerTask(pool);
                 new Thread(crawlerTask).start();
             }
-            else {
-                try {
-                    Thread.sleep(100);
-                }
-                // Catch InterruptedException.
-                catch (InterruptedException ie) {
-                    System.out.println("Caught: unexpected InterruptedException, ignoring...");
-                }
-
-            }
         }
 
-        System.out.println("");
-        System.out.println("-----------------------------------");
-        System.out.println("----------Progs work end-----------");
-        System.out.println("-----------Rezults:----------------");
-        System.out.println("-----------------------------------");
+        System.out.println("==========END================");
+        System.out.println("=============RESULT:==========");
 
         LinkedList<URLDepthPair> list = pool.getWatchedList();
-        System.out.println("Watched pages:");
+        System.out.println("==========WATCHED:===========");
         int count = 1;
         for (URLDepthPair page : list) {
             System.out.println(count + " |  " + page.toString());
@@ -74,25 +56,19 @@ public class Crawler {
         }
 
         list = pool.getBlockedList();
-        System.out.println("\nPages that have not been parsed:");
+        System.out.println("==============NOT WATCHED:============");
         count = 1;
         for (URLDepthPair page : list) {
             System.out.println(count + " |  " + page.toString());
             count += 1;
         }
 
-        System.out.println("-----------------------------------");
-        System.out.println("----------End of rezults-----------");
-        System.out.println("-----------End of prog-------------");
-        System.out.println("-----------------------------------");
-
         System.exit(0);
-
     }
 
     public static void createURlDepthPairObject(String url, int depth, LinkedList<URLDepthPair> listOfUrl) {
         URLDepthPair newURL = null;
-        try{
+        try {
 
             newURL = new URLDepthPair(url, depth);
         } catch (MalformedURLException e) {
@@ -116,25 +92,22 @@ public class Crawler {
         urlDepth.setDepth(0);
 
 
-        return(urlDepth);
+        return (urlDepth);
 
     }
 
-
+//SSLSocketFactory для https
     public static LinkedList<URLDepthPair> parsePage(URLDepthPair element) {
-
         LinkedList<URLDepthPair> listOfUrl = new LinkedList<URLDepthPair>();
-
-        Socket socket = null;
+        SocketFactory socketFactory = null;
 
         try {
-
-            socket = new Socket(element.getHostName(), HTTP_PORT);
+            socketFactory = SSLSocketFactory.getDefault();
+            Socket socket = socketFactory.createSocket(element.getHostName(), HTTPS_PORT);
 
             try {
                 socket.setSoTimeout(5000);
-            }
-            catch (SocketException exc) {
+            } catch (SocketException exc) {
                 System.err.println("SocketException: " + exc.getMessage());
                 return null;
             }
@@ -158,54 +131,44 @@ public class Crawler {
 
             int strCount = 0;
 
-            while(line != null) {
+            while (line != null) {
 
                 try {
 
                     line = in.readLine();
                     strCount += 1;
 
-                                 String url = CrawlerHelper.getURLFromHTMLTag(line);
+                    String url = CrawlerHelper.getURLFromHTMLTag(line);
                     if (url == null) continue;
-
-                    if (url.startsWith("https://")) {
-
-                        continue;
-                    }
 
                     if (url.startsWith("../")) {
                         String newUrl = CrawlerHelper.urlFromBackRef(element.getURL(), url);
                         Crawler.createURlDepthPairObject(newUrl, element.getDepth() + 1, listOfUrl);
-                    }
-
-                    else if (url.startsWith("http://")) {
+                    } else if (url.startsWith("https://")) {
                         String newUrl = CrawlerHelper.cutTrashAfterFormat(url);
                         Crawler.createURlDepthPairObject(newUrl, element.getDepth() + 1, listOfUrl);
-                    }
-
-                    else {
+                    } else if (url.startsWith("http://")) {
+                        String newUrl = CrawlerHelper.cutTrashAfterFormat(url);
+                        Crawler.createURlDepthPairObject(newUrl, element.getDepth() + 1, listOfUrl);
+                    } else {
                         String newUrl;
                         newUrl = CrawlerHelper.cutURLEndFormat(element.getURL()) + url;
                         Crawler.createURlDepthPairObject(newUrl, element.getDepth() + 1, listOfUrl);
                     }
 
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     break;
                 }
             }
 
             if (strCount == 1) {
-                System.out.println("No http refs in this page!");
                 return null;
             }
 
 
-        }
-        catch (UnknownHostException e) {
+        } catch (UnknownHostException e) {
             System.out.println("Opps, UnknownHostException catched, so [" + element.getURL() + "] is not workable now!");
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -214,16 +177,17 @@ public class Crawler {
 
 
     public static void showResults(URLDepthPair element, LinkedList<URLDepthPair> listOfUrl) {
-        System.out.println("---Rezults of working---");
-        System.out.println("Origin page: " + element.getURL());
+        System.out.println("===========CRAWLER RESULTS OF WORKING============");
+        System.out.println("===========ORIGINAL PAGE===============: " + element.getURL());
 
-        System.out.println("Pages that were founded:");
+        System.out.println("===========FOUNDED:====================");
         int count = 1;
         for (URLDepthPair pair : listOfUrl) {
             System.out.println(count + " |  " + pair.toString());
             count += 1;
         }
-        System.out.println("-----End of rezults-----");
+        System.out.println("");
+        System.out.println("");
         System.out.println("");
     }
 

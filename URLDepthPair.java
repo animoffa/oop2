@@ -1,11 +1,12 @@
 import java.net.MalformedURLException;
 import java.net.URL;
-
+// не меняли
 public class URLDepthPair {
 
     private String url;
     private int depth;
     public static final String URL_PREFIX = "http://";
+    public static final String HTTP_URL_PREFIX = "https://";
     public static final int MAX_DEPTH_VALUE = 100;
 
     public URLDepthPair(String url, int depth) throws MalformedURLException {
@@ -24,13 +25,8 @@ public class URLDepthPair {
     }
 
     public static boolean isHttpPrefixInURL(String url) {
-        if (!url.startsWith(URL_PREFIX)) return false;
+        if (!(url.startsWith(URL_PREFIX) || url.startsWith(HTTP_URL_PREFIX))) return false;
         return true;
-    }
-
-    public static boolean isDepthAboveLimit(int depth) {
-        if (depth > MAX_DEPTH_VALUE) return true;
-        return false;
     }
 
     public String toString() {
@@ -74,25 +70,5 @@ public class URLDepthPair {
         this.depth = depth;
     }
 
-    public static String fullUrlStringToHostName(String in) {
-        try {
-            URL url = new URL(in);
-            return url.getHost();
-        }
-        catch (MalformedURLException e) {
-            System.err.println("MalformedURLException: " + e.getMessage());
-            return null;
-        }
-    }
 
-    public static URL getUrlObjectFromUrlString(String urlStr) {
-        try {
-            URL url = new URL(urlStr);
-            return url;
-        }
-        catch (MalformedURLException e) {
-            System.err.println("MalformedURLException: " + e.getMessage());
-            return null;
-        }
-    }
 }

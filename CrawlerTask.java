@@ -1,4 +1,5 @@
 import java.util.*;
+//Чтобы выполнить веб-сканирование в нескольких потоках, необходимо
 
 public class CrawlerTask implements Runnable {
 
@@ -11,19 +12,15 @@ public class CrawlerTask implements Runnable {
     }
 
     public void run() {
-
         element = myPool.get();
-
-        int myDepth = element.getDepth();
-
-        LinkedList<URLDepthPair> linksList = new LinkedList<URLDepthPair>();
+        LinkedList<URLDepthPair> linksList;
         linksList = Crawler.parsePage(element);
 
-        Crawler.showResults(element, linksList);
-
-        for (URLDepthPair pair: linksList) {
-            myPool.put(pair);
+        if (linksList != null && !linksList.isEmpty()) {
+            Crawler.showResults(element, linksList);
+            for (URLDepthPair pair : linksList) {
+                myPool.put(pair);
+            }
         }
-
     }
 }

@@ -45,15 +45,8 @@ public class CrawlerHelper {
 
 
     public URLDepthPair getURLDepthPairFromInput() {
-
-        String url;
-        int depth;
-
-
         String[] args;
-
         URLDepthPair urlDepth = null;
-
         Scanner in = new Scanner(System.in);
 
         while (urlDepth == null) {
@@ -146,20 +139,6 @@ public class CrawlerHelper {
         return info;
     }
 
-    public static String[] getInfoAboutUrl(String urlStr, boolean needToOut) {
-        URL url = null;
-        try {
-            url = new URL(urlStr);
-        }
-        catch (MalformedURLException e) {
-            System.err.println("MalformedURLException: " + e.getMessage());
-            return null;
-        }
-
-        String[] info = getInfoAboutUrl(url, needToOut);
-        return info;
-
-    }
 
     public static String getURLFromHTMLTag(String line) {
         if (line.indexOf(Crawler.HOOK_REF) == -1) return null;
